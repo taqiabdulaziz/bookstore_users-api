@@ -5,50 +5,39 @@ import (
 	"github.com/taqiabdulaziz/bookstore_users-api/datasources/mysql/users_db"
 	"github.com/taqiabdulaziz/bookstore_users-api/utils"
 	"github.com/taqiabdulaziz/bookstore_users-api/utils/date_utils"
-	"strings"
-)
-
-var (
-	usersDB = make(map[int64]*User)
+	"github.com/taqiabdulaziz/bookstore_users-api/utils/mysql_utils"
 )
 
 const (
-	indexUniqueEmail = "users_email_uindex"
 	queryInsertUser = "INSERT INTO users(first_name, last_name, email, date_created) VALUES(?, ?, ?, ?);"
+	queryGetUser    = "SELECT id, first_name, last_name, email, date_created FROM users WHERE id = ?;"
+	queryUpdateUser = "UPDATE users SET first_name = ?, last_name = ?, email = ? WHERE id = ?;"
 )
 
 func (user *User) Get() *utils.RestErr {
-	if err := users_db.Client.Ping(); err != nil {
-		panic(err)
+	stmt, err := users_db.Client.Prepare(queryGetUser)
+	if err != nil {
+		return utils.NewInternalServerError(err.Error())
 	}
 
-	result := usersDB[user.Id]
-	if result == nil {
-		return utils.NewNotFoundError(fmt.Sprintf("user %d not found", user.Id))
+	result := stmt.QueryRow(user.Id)
+	if err := result.Scan(&user.Id, &user.FirstName, &user.LastName, &user.Email, &user.DateCreated); err != nil {
+		return mysql_utils.ParseError(err)
 	}
-
-	user.Id = result.Id
-	user.Email = result.Email
-	user.FirstName = result.FirstName
-	user.LastName = result.LastName
-	user.DateCreated = result.DateCreated
 	return nil
 }
 
 func (user *User) Save() *utils.RestErr {
-	stmt, err :=  users_db.Client.Prepare(queryInsertUser)
+	stmt, err := users_db.Client.Prepare(queryInsertUser)
 	if err != nil {
 		return utils.NewInternalServerError(err.Error())
 	}
 
 	defer stmt.Close()
 	user.DateCreated = date_utils.GetNowString()
-	insertResult, err := stmt.Exec(user.FirstName, user.LastName, user.Email, user.DateCreated)
-	if err != nil {
-		if strings.Contains(err.Error(), indexUniqueEmail) {
-			return utils.NewBadRequestError(fmt.Sprintf("email %s already exists", user.Email))
-		}
-		return utils.NewInternalServerError(fmt.Sprintf("error when trying to save user: %s", err.Error()))
+	insertResult, saveErr := stmt.Exec(user.FirstName, user.LastName, user.Email, user.DateCreated)
+	if saveErr != nil {
+		return mysql_utils.ParseError(saveErr)
 	}
 
 	userId, err := insertResult.LastInsertId()
@@ -56,13 +45,22 @@ func (user *User) Save() *utils.RestErr {
 		return utils.NewInternalServerError(fmt.Sprintf("error when trying to save user: %s", err.Error()))
 	}
 
-	if usersDB[user.Id] != nil {
-		if usersDB[user.Id].Email == user.Email {
-			return utils.NewBadRequestError(fmt.Sprintf("user %s already registerred", user.Email))
-		}
-		return utils.NewBadRequestError(fmt.Sprintf("user %d already exists", user.Id))
+	user.Id = userId
+	return nil
+}
+
+func (user *User) Update() *utils.RestErr {
+	stmt, err := users_db.Client.Prepare(queryUpdateUser)
+	if err != nil {
+		return utils.NewInternalServerError(err.Error())
 	}
 
-	user.Id = userId
+	defer stmt.Close()
+
+	_, err = stmt.Exec(user.FirstName, user.LastName, user.Email, user.Id)
+	if err != nil {
+		return mysql_utils.ParseError(err)
+	}
+
 	return nil
 }

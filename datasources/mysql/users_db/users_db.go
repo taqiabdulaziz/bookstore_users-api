@@ -10,24 +10,22 @@ import (
 const (
 	mysql_users_username = "mysql_users_username"
 	mysql_users_password = "mysql_users_password"
-	mysql_users_host = "mysql_users_host"
-	mysql_users_schema = "mysql_users_schema"
+	mysql_users_host     = "mysql_users_host"
+	mysql_users_schema   = "mysql_users_schema"
 )
 
 var (
-	Client *sql.DB
+	Client   *sql.DB
 	username = os.Getenv(mysql_users_username)
 	password = os.Getenv(mysql_users_password)
-	host = os.Getenv(mysql_users_host)
-	schema = os.Getenv(mysql_users_schema)
+	host     = os.Getenv(mysql_users_host)
+	schema   = os.Getenv(mysql_users_schema)
 )
 
-func init()  {
+func init() {
 	var err error
 	dataSourceName := fmt.Sprintf("%s:%s@tcp(%s)/%s?charset=utf8",
-		username, password, host, schema,
-		)
-	fmt.Println(dataSourceName)
+		username, password, host, schema)
 	Client, err = sql.Open("mysql", dataSourceName)
 	if err != nil {
 		panic(err)
