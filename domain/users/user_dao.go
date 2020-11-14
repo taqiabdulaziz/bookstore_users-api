@@ -78,7 +78,7 @@ func (user *User) Delete() *utils.RestErr {
 	return nil
 }
 
-func (user *User) FindByStatus(status string) ([]User, *utils.RestErr) {
+func (user *User) FindByStatus(status string) (Users, *utils.RestErr) {
 	stmt, err := users_db.Client.Prepare(queryFindUserByStatus)
 	if err != nil {
 		return nil, utils.NewInternalServerError(err.Error())

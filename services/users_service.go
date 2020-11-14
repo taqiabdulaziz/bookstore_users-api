@@ -7,7 +7,21 @@ import (
 	"github.com/taqiabdulaziz/bookstore_users-api/utils/date_utils"
 )
 
-func CreateUser(user users.User) (*users.User, *utils.RestErr) {
+var (
+	UsersService usersServiceInterface = &usersService{}
+)
+
+type usersService struct{}
+
+type usersServiceInterface interface {
+	CreateUser(users.User) (*users.User, *utils.RestErr)
+	GetUser(int64) (*users.User, *utils.RestErr)
+	UpdateUser(bool, users.User) (*users.User, *utils.RestErr)
+	DeleteUser(int64) *utils.RestErr
+	Search(string) (users.Users, *utils.RestErr)
+}
+
+func (_ *usersService) CreateUser(user users.User) (*users.User, *utils.RestErr) {
 	if err := user.Validate(); err != nil {
 		return nil, err
 	}
@@ -21,7 +35,7 @@ func CreateUser(user users.User) (*users.User, *utils.RestErr) {
 	return &user, nil
 }
 
-func GetUser(userId int64) (*users.User, *utils.RestErr) {
+func (_ *usersService) GetUser(userId int64) (*users.User, *utils.RestErr) {
 	result := &users.User{
 		Id: userId,
 	}
@@ -33,13 +47,16 @@ func GetUser(userId int64) (*users.User, *utils.RestErr) {
 	return result, nil
 }
 
-func UpdateUser(isPartial bool, user users.User) (*users.User, *utils.RestErr) {
-	currentUser, err := GetUser(user.Id)
-	if err != nil {
+func (_ *usersService) UpdateUser(isPartial bool, user users.User) (*users.User, *utils.RestErr) {
+	currentUser := &users.User{
+		Id: user.Id,
+	}
+
+	if err := currentUser.Get(); err != nil {
 		return nil, err
 	}
 
-	if err = user.Validate(); err != nil {
+	if err := user.Validate(); err != nil {
 		return nil, err
 	}
 
@@ -66,12 +83,12 @@ func UpdateUser(isPartial bool, user users.User) (*users.User, *utils.RestErr) {
 	return currentUser, nil
 }
 
-func DeleteUser(userId int64) *utils.RestErr {
+func (_ *usersService) DeleteUser(userId int64) *utils.RestErr {
 	user := &users.User{Id: userId}
 	return user.Delete()
 }
 
-func Search(status string) ([]users.User, *utils.RestErr) {
+func (_ *usersService) Search(status string) (users.Users, *utils.RestErr) {
 	user := &users.User{}
 	return user.FindByStatus(status)
 }
