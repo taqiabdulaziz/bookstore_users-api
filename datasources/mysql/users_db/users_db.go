@@ -32,6 +32,7 @@ func init() {
 	}
 
 	if err = Client.Ping(); err != nil {
+		fmt.Println(err)
 		panic(err)
 	}
 	fmt.Println("database successfully configured")
